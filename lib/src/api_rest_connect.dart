@@ -223,9 +223,11 @@ class ApiRestConnect {
 
     // Combinar headers
     final finalHeaders = <String, String>{};
-    finalHeaders.addAll(config.defaultHeaders);
+
     if (headers != null) {
       finalHeaders.addAll(headers);
+    } else {
+      finalHeaders.addAll(config.defaultHeaders);
     }
 
     // Log de la petición
