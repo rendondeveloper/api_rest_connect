@@ -1,4 +1,5 @@
 import 'package:api_rest_connect/api_rest_connect_export.dart';
+import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'dart:io';
@@ -182,7 +183,7 @@ class ApiRestConnect {
   /// Ejecuta una petición POST
   Future<dynamic> executePost({
     required String path,
-    Object? body,
+    dynamic body,
     dynamic requestData,
     String? otherAuthority,
     Map<String, String>? headers,
@@ -213,47 +214,43 @@ class ApiRestConnect {
       throw apiError;
     }
 
-    // Preparar el body
-    Object? finalBody;
-    if (requestData != null) {
-      finalBody = requestData.toJson();
-    } else if (body != null) {
-      finalBody = body;
-    }
-
     // Combinar headers
     final finalHeaders = <String, String>{};
 
     if (headers != null) {
       finalHeaders.addAll(headers);
+      debugPrint('Headers custom $headers');
     } else {
       finalHeaders.addAll(config.defaultHeaders);
+      debugPrint('Headers default $finalHeaders');
     }
 
-    // Log de la petición
-    ApiInterceptor.logRequest(
-      method: 'POST',
-      uri: uri,
-      headers: finalHeaders,
-      body: finalBody,
-    );
-
     try {
-      // Crear request usando http.Request
+      // Crear request usando http.Request (igual que el código que funciona)
       final request = http.Request('POST', uri);
-      request.headers.addAll(finalHeaders);
 
-      // Agregar body al request
-      if (finalBody != null) {
-        if (finalBody is String) {
-          request.body = finalBody;
-        } else {
-          request.body = json.encode(finalBody);
+      // Agregar body al request (igual que el código que funciona)
+      if (body != null) {
+        if (body is Map<String, dynamic>) {
+          request.body = json.encode(body);
+        } else if (body is String) {
+          request.body = body;
         }
       }
 
+      // Agregar headers (igual que el código que funciona)
+      request.headers.addAll(finalHeaders);
+
+      // Log de la petición
+      ApiInterceptor.logRequest(
+        method: 'POST',
+        uri: uri,
+        headers: request.headers,
+        body: request.body,
+      );
+
       // Enviar request con timeout
-      final streamedResponse = await request.send().timeout(config.timeout);
+      final streamedResponse = await request.send();
 
       // Convertir StreamedResponse a Response
       final response = await http.Response.fromStream(streamedResponse);

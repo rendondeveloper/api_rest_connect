@@ -10,7 +10,7 @@ class ApiConfig {
     this.authority,
     this.timeout = const Duration(minutes: 1),
     this.defaultHeaders = const {
-      'Content-Type': 'application/json; charset=UTF-8',
+      'Content-Type': 'application/json',
     },
   });
 

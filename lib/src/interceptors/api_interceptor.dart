@@ -13,13 +13,13 @@ class ApiInterceptor {
     log('🌐 API REQUEST', name: 'ApiRestConnect');
     log('📤 Method: $method', name: 'ApiRestConnect');
     log('🔗 URL: ${uri.toString()}', name: 'ApiRestConnect');
-    
+
     if (headers != null && headers.isNotEmpty) {
-      log('📋 Headers: ${_formatHeaders(headers)}', name: 'ApiRestConnect');
+      log('📋 Headers: \n ${_formatHeaders(headers)}', name: 'ApiRestConnect');
     }
-    
+
     if (body != null) {
-      log('📦 Body: ${_formatBody(body)}', name: 'ApiRestConnect');
+      log('📦 Body: \n ${_formatBody(body)}', name: 'ApiRestConnect');
     }
   }
 
@@ -32,12 +32,14 @@ class ApiInterceptor {
     log('📥 API RESPONSE', name: 'ApiRestConnect');
     log('📊 Status: $statusCode', name: 'ApiRestConnect');
     log('⏱️ Duration: ${duration.inMilliseconds}ms', name: 'ApiRestConnect');
-    
+
     if (headers != null && headers.isNotEmpty) {
-      log('📋 Response Headers: ${_formatHeaders(headers)}', name: 'ApiRestConnect');
+      log('📋 Response Headers: \n ${_formatHeaders(headers)}',
+          name: 'ApiRestConnect');
     }
-    
-    log('📦 Response Body: ${_formatResponseBody(body)}', name: 'ApiRestConnect');
+
+    log('📦 Response Body: \n ${_formatResponseBody(body)}',
+        name: 'ApiRestConnect');
   }
 
   static void logError({
