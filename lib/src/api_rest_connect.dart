@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'dart:io';
+import 'utils/token_utils.dart';
 
 /// Cliente HTTP REST mejorado que retorna directamente los datos de la respuesta
 class ApiRestConnect {
@@ -36,6 +37,14 @@ class ApiRestConnect {
       }
     } catch (e) {
       throw Exception('Error al procesar la respuesta JSON: $e');
+    }
+  }
+
+  /// Agrega el token a los headers si existe
+  Future<void> _addTokenToHeaders(Map<String, String> headers) async {
+    final token = await TokenUtils.getToken();
+    if (token != null && token.isNotEmpty) {
+      headers['Authorization'] = 'Bearer $token';
     }
   }
 
@@ -83,6 +92,28 @@ class ApiRestConnect {
     String? otherAuthority,
     Map<String, String>? headers,
     ApiConfig? overrideConfig,
+    bool retryOnTokenError = true,
+  }) async {
+    return await _executeGetWithRetry(
+      path: path,
+      params: params,
+      otherAuthority: otherAuthority,
+      headers: headers,
+      overrideConfig: overrideConfig,
+      retryOnTokenError: retryOnTokenError,
+      isRetry: false,
+    );
+  }
+
+  /// Método interno para ejecutar GET con reintento automático
+  Future<dynamic> _executeGetWithRetry({
+    required String path,
+    Map<String, dynamic>? params,
+    String? otherAuthority,
+    Map<String, String>? headers,
+    ApiConfig? overrideConfig,
+    bool retryOnTokenError = true,
+    required bool isRetry,
   }) async {
     final config = overrideConfig ?? _config;
     final uri = Uri.https(
@@ -116,6 +147,9 @@ class ApiRestConnect {
     if (headers != null) {
       finalHeaders.addAll(headers);
     }
+
+    // Agregar token si existe
+    await _addTokenToHeaders(finalHeaders);
 
     // Log de la petición
     ApiInterceptor.logRequest(
@@ -154,6 +188,40 @@ class ApiRestConnect {
           statusCode: response.statusCode,
         );
 
+        // Si es error de token (401) y no es un reintento, intentar refrescar token
+        if (errorType == ApiErrorType.unauthorized &&
+            retryOnTokenError &&
+            !isRetry &&
+            (_config.tokenUrl != null && _config.tokenField != null)) {
+          try {
+            debugPrint('Token expirado, intentando refrescar...');
+            await refreshToken();
+            debugPrint(
+                'Token refrescado exitosamente, reintentando petición...');
+
+            // Reintentar la petición una vez
+            return await _executeGetWithRetry(
+              path: path,
+              params: params,
+              otherAuthority: otherAuthority,
+              headers: headers,
+              overrideConfig: overrideConfig,
+              retryOnTokenError: false, // No reintentar de nuevo
+              isRetry: true,
+            );
+          } catch (refreshError) {
+            debugPrint('Error al refrescar token: $refreshError');
+            // Si falla el refresh, lanzar el error original
+            ApiInterceptor.logError(
+              error: apiError.toString(),
+              method: 'GET',
+              uri: uri,
+              errorType: apiError.type,
+            );
+            throw apiError;
+          }
+        }
+
         ApiInterceptor.logError(
           error: apiError.toString(),
           method: 'GET',
@@ -168,6 +236,39 @@ class ApiRestConnect {
       return _processResponseBody(response.body);
     } catch (error) {
       final apiError = _handleError(error, null);
+
+      // Si es error de token (401) y no es un reintento, intentar refrescar token
+      if (apiError.type == ApiErrorType.unauthorized &&
+          retryOnTokenError &&
+          !isRetry &&
+          (_config.tokenUrl != null && _config.tokenField != null)) {
+        try {
+          debugPrint('Token expirado, intentando refrescar...');
+          await refreshToken();
+          debugPrint('Token refrescado exitosamente, reintentando petición...');
+
+          // Reintentar la petición una vez
+          return await _executeGetWithRetry(
+            path: path,
+            params: params,
+            otherAuthority: otherAuthority,
+            headers: headers,
+            overrideConfig: overrideConfig,
+            retryOnTokenError: false, // No reintentar de nuevo
+            isRetry: true,
+          );
+        } catch (refreshError) {
+          debugPrint('Error al refrescar token: $refreshError');
+          // Si falla el refresh, lanzar el error original
+          ApiInterceptor.logError(
+            error: apiError.toString(),
+            method: 'GET',
+            uri: uri,
+            errorType: apiError.type,
+          );
+          throw apiError;
+        }
+      }
 
       ApiInterceptor.logError(
         error: apiError.toString(),
@@ -224,6 +325,9 @@ class ApiRestConnect {
       finalHeaders.addAll(config.defaultHeaders);
       debugPrint('Headers default $finalHeaders');
     }
+
+    // Agregar token si existe
+    await _addTokenToHeaders(finalHeaders);
 
     try {
       // Crear request usando http.Request (igual que el código que funciona)
@@ -349,6 +453,9 @@ class ApiRestConnect {
       finalHeaders.addAll(headers);
     }
 
+    // Agregar token si existe
+    await _addTokenToHeaders(finalHeaders);
+
     // Log de la petición
     ApiInterceptor.logRequest(
       method: 'PUT',
@@ -464,6 +571,9 @@ class ApiRestConnect {
       finalHeaders.addAll(headers);
     }
 
+    // Agregar token si existe
+    await _addTokenToHeaders(finalHeaders);
+
     // Log de la petición
     ApiInterceptor.logRequest(
       method: 'DELETE',
@@ -537,6 +647,96 @@ class ApiRestConnect {
     }
   }
 
+  /// Refresca el token desde el servidor
+  ///
+  /// [url] - URL completa del endpoint para refrescar el token (opcional, usa tokenUrl de ApiConfig si no se proporciona)
+  /// [tokenField] - Campo en la respuesta donde se encuentra el token (opcional, usa tokenField de ApiConfig si no se proporciona)
+  /// [body] - Body opcional para la petición POST
+  /// [headers] - Headers opcionales para la petición
+  ///
+  /// Retorna el token actualizado o lanza una excepción si falla
+  Future<String> refreshToken({
+    String? url,
+    String? tokenField,
+    dynamic body,
+    Map<String, String>? headers,
+  }) async {
+    try {
+      // Usar valores de la configuración si no se proporcionan
+      final finalUrl = url ?? _config.tokenUrl;
+      final finalTokenField = tokenField ?? _config.tokenField;
+
+      if (finalUrl == null || finalUrl.isEmpty) {
+        throw Exception(
+            'URL del token no configurada. Proporciona la URL o configúrala en ApiConfig.tokenUrl');
+      }
+
+      if (finalTokenField == null || finalTokenField.isEmpty) {
+        throw Exception(
+            'Campo del token no configurado. Proporciona el campo o configúralo en ApiConfig.tokenField');
+      }
+
+      // Parsear la URL
+      final uri = Uri.parse(finalUrl);
+      final path = uri.path;
+      final authority = uri.host;
+      final port = uri.port;
+
+      // Construir la URL con puerto si es necesario
+      String? otherAuthority;
+      if (port != 80 && port != 443) {
+        otherAuthority = '$authority:$port';
+      } else {
+        otherAuthority = authority;
+      }
+
+      // Realizar la petición POST para obtener el token
+      final response = await executePost(
+        path: path,
+        body: body,
+        otherAuthority: otherAuthority,
+        headers: headers,
+      );
+
+      // Extraer el token del campo especificado
+      String token;
+      if (response is Map<String, dynamic>) {
+        // Si el campo tiene puntos, navegar por el objeto
+        final fields = finalTokenField.split('.');
+        dynamic value = response;
+
+        for (final field in fields) {
+          if (value is Map<String, dynamic> && value.containsKey(field)) {
+            value = value[field];
+          } else {
+            throw Exception(
+                'Campo "$finalTokenField" no encontrado en la respuesta');
+          }
+        }
+
+        if (value is String) {
+          token = value;
+        } else {
+          token = value.toString();
+        }
+      } else {
+        throw Exception('La respuesta no es un objeto JSON válido');
+      }
+
+      if (token.isEmpty) {
+        throw Exception('El token está vacío en el campo "$finalTokenField"');
+      }
+
+      // Guardar el token
+      await TokenUtils.saveToken(token);
+
+      return token;
+    } catch (error) {
+      debugPrint('Error al refrescar token: $error');
+      rethrow;
+    }
+  }
+
   /// Método para crear una instancia con configuración personalizada
   ApiRestConnect withConfig(ApiConfig config) {
     return ApiRestConnect(config: config);
@@ -555,6 +755,18 @@ class ApiRestConnect {
     newDefaultHeaders.addAll(headers);
 
     final newConfig = _config.copyWith(defaultHeaders: newDefaultHeaders);
+    return ApiRestConnect(config: newConfig);
+  }
+
+  /// Método para crear una instancia con configuración de token
+  ApiRestConnect withTokenConfig({
+    required String tokenUrl,
+    required String tokenField,
+  }) {
+    final newConfig = _config.copyWith(
+      tokenUrl: tokenUrl,
+      tokenField: tokenField,
+    );
     return ApiRestConnect(config: newConfig);
   }
 }

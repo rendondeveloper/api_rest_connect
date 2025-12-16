@@ -4,6 +4,8 @@ class ApiConfig {
   final String? authority;
   final Duration timeout;
   final Map<String, String> defaultHeaders;
+  final String? tokenUrl;
+  final String? tokenField;
 
   const ApiConfig({
     this.baseUrl,
@@ -12,6 +14,8 @@ class ApiConfig {
     this.defaultHeaders = const {
       'Content-Type': 'application/json',
     },
+    this.tokenUrl,
+    this.tokenField,
   });
 
   ApiConfig copyWith({
@@ -19,18 +23,22 @@ class ApiConfig {
     String? authority,
     Duration? timeout,
     Map<String, String>? defaultHeaders,
+    String? tokenUrl,
+    String? tokenField,
   }) {
     return ApiConfig(
       baseUrl: baseUrl ?? this.baseUrl,
       authority: authority ?? this.authority,
       timeout: timeout ?? this.timeout,
       defaultHeaders: defaultHeaders ?? this.defaultHeaders,
+      tokenUrl: tokenUrl ?? this.tokenUrl,
+      tokenField: tokenField ?? this.tokenField,
     );
   }
 
   @override
   String toString() {
-    return 'ApiConfig(baseUrl: $baseUrl, authority: $authority, timeout: $timeout, defaultHeaders: $defaultHeaders)';
+    return 'ApiConfig(baseUrl: $baseUrl, authority: $authority, timeout: $timeout, defaultHeaders: $defaultHeaders, tokenUrl: $tokenUrl, tokenField: $tokenField)';
   }
 
   @override
