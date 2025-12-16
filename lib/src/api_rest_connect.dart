@@ -105,6 +105,24 @@ class ApiRestConnect {
     );
   }
 
+  /// Convierte un mapa de parámetros dinámicos a strings para usar en query parameters
+  Map<String, String>? _convertParamsToString(Map<String, dynamic>? params) {
+    if (params == null) return null;
+    return params.map((key, value) {
+      if (value == null) {
+        return MapEntry(key, '');
+      } else if (value is String) {
+        return MapEntry(key, value);
+      } else if (value is num) {
+        return MapEntry(key, value.toString());
+      } else if (value is bool) {
+        return MapEntry(key, value.toString());
+      } else {
+        return MapEntry(key, value.toString());
+      }
+    });
+  }
+
   /// Método interno para ejecutar GET con reintento automático
   Future<dynamic> _executeGetWithRetry({
     required String path,
@@ -119,7 +137,7 @@ class ApiRestConnect {
     final uri = Uri.https(
       otherAuthority ?? currentBaseUrl,
       path,
-      params,
+      _convertParamsToString(params),
     );
 
     final startTime = DateTime.now();
@@ -542,7 +560,7 @@ class ApiRestConnect {
     final uri = Uri.https(
       otherAuthority ?? currentBaseUrl,
       path,
-      params,
+      _convertParamsToString(params),
     );
 
     final startTime = DateTime.now();
