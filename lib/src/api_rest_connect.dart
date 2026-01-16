@@ -711,7 +711,7 @@ class ApiRestConnect {
       // Realizar la petición POST para obtener el token
       final response = await executePost(
         path: path,
-        body: body,
+        body: body ?? _config.tokenBody,
         otherAuthority: otherAuthority,
         headers: headers,
       );
