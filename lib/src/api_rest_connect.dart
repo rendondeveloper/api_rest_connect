@@ -3,7 +3,6 @@ import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'dart:io';
-import 'utils/token_utils.dart';
 
 /// Cliente HTTP REST mejorado que retorna directamente los datos de la respuesta
 class ApiRestConnect {
@@ -104,7 +103,6 @@ class ApiRestConnect {
       headers: headers,
       overrideConfig: overrideConfig,
       retryOnTokenError: retryOnTokenError,
-      isRetry: false,
     );
   }
 
@@ -134,7 +132,6 @@ class ApiRestConnect {
     Map<String, String>? headers,
     ApiConfig? overrideConfig,
     bool retryOnTokenError = true,
-    required bool isRetry,
   }) async {
     final config = overrideConfig ?? _config;
     final uri = Uri.https(
@@ -212,7 +209,6 @@ class ApiRestConnect {
         // Si es error de token (401) y no es un reintento, intentar refrescar token
         if (errorType == ApiErrorType.unauthorized &&
             retryOnTokenError &&
-            !isRetry &&
             (_config.tokenUrl != null && _config.tokenField != null)) {
           try {
             debugPrint('Token expirado, intentando refrescar...');
@@ -227,8 +223,7 @@ class ApiRestConnect {
               otherAuthority: otherAuthority,
               headers: headers,
               overrideConfig: overrideConfig,
-              retryOnTokenError: false, // No reintentar de nuevo
-              isRetry: true,
+              retryOnTokenError: false,
             );
           } catch (refreshError) {
             debugPrint('Error al refrescar token: $refreshError');
@@ -261,7 +256,6 @@ class ApiRestConnect {
       // Si es error de token (401) y no es un reintento, intentar refrescar token
       if (apiError.type == ApiErrorType.unauthorized &&
           retryOnTokenError &&
-          !isRetry &&
           (_config.tokenUrl != null && _config.tokenField != null)) {
         try {
           debugPrint('Token expirado, intentando refrescar...');
@@ -275,8 +269,7 @@ class ApiRestConnect {
             otherAuthority: otherAuthority,
             headers: headers,
             overrideConfig: overrideConfig,
-            retryOnTokenError: false, // No reintentar de nuevo
-            isRetry: true,
+            retryOnTokenError: false,
           );
         } catch (refreshError) {
           debugPrint('Error al refrescar token: $refreshError');
