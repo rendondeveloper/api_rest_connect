@@ -53,6 +53,11 @@ class ApiRestConnect {
 
   /// Maneja errores y crea ApiError correspondiente
   ApiError _handleError(dynamic error, int? statusCode) {
+    // Si el error ya es un ApiError, retornarlo directamente
+    if (error is ApiError) {
+      return error;
+    }
+
     if (error is http.ClientException) {
       return ApiError(
         type: ApiErrorType.networkError,
