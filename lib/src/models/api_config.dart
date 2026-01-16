@@ -7,6 +7,7 @@ class ApiConfig {
   final String? tokenUrl;
   final String? tokenField;
   final Map<String, dynamic>? tokenBody;
+  final Map<String, dynamic>? tokenParams;
 
   const ApiConfig({
     this.baseUrl,
@@ -18,6 +19,7 @@ class ApiConfig {
     this.tokenUrl,
     this.tokenField,
     this.tokenBody,
+    this.tokenParams,
   });
 
   ApiConfig copyWith({
@@ -28,6 +30,7 @@ class ApiConfig {
     String? tokenUrl,
     String? tokenField,
     Map<String, dynamic>? tokenBody,
+    Map<String, dynamic>? tokenParams,
   }) {
     return ApiConfig(
       baseUrl: baseUrl ?? this.baseUrl,
@@ -37,12 +40,13 @@ class ApiConfig {
       tokenUrl: tokenUrl ?? this.tokenUrl,
       tokenField: tokenField ?? this.tokenField,
       tokenBody: tokenBody ?? this.tokenBody,
+      tokenParams: tokenParams ?? this.tokenParams,
     );
   }
 
   @override
   String toString() {
-    return 'ApiConfig(baseUrl: $baseUrl, authority: $authority, timeout: $timeout, defaultHeaders: $defaultHeaders, tokenUrl: $tokenUrl, tokenField: $tokenField, tokenBody: $tokenBody)';
+    return 'ApiConfig(baseUrl: $baseUrl, authority: $authority, timeout: $timeout, defaultHeaders: $defaultHeaders, tokenUrl: $tokenUrl, tokenField: $tokenField, tokenBody: $tokenBody, tokenParams: $tokenParams)';
   }
 
   @override

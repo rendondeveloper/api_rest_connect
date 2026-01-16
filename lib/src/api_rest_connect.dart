@@ -304,6 +304,7 @@ class ApiRestConnect {
     required String path,
     dynamic body,
     dynamic requestData,
+    Map<String, dynamic>? params,
     String? otherAuthority,
     Map<String, String>? headers,
     ApiConfig? overrideConfig,
@@ -312,6 +313,7 @@ class ApiRestConnect {
     final uri = Uri.https(
       otherAuthority ?? currentBaseUrl,
       path,
+      _convertParamsToString(params),
     );
 
     final startTime = DateTime.now();
@@ -372,7 +374,7 @@ class ApiRestConnect {
       );
 
       // Enviar request con timeout
-      final streamedResponse = await request.send();
+      final streamedResponse = await request.send().timeout(config.timeout);
 
       // Convertir StreamedResponse a Response
       final response = await http.Response.fromStream(streamedResponse);
@@ -711,7 +713,7 @@ class ApiRestConnect {
       // Realizar la petición POST para obtener el token
       final response = await executePost(
         path: path,
-        body: body ?? _config.tokenBody,
+        params: _config.tokenParams,
         otherAuthority: otherAuthority,
         headers: headers,
       );
