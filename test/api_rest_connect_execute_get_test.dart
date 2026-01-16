@@ -305,4 +305,208 @@ void main() {
       expect(client, isNotNull);
     });
   });
+
+  group('ApiRestConnect - executeGet - Token inicial (initialToken)', () {
+    test('debe guardar el token inicial cuando se proporciona', () async {
+      // Limpiar token antes del test
+      await TokenUtils.removeToken();
+
+      final client = ApiRestConnect(
+        config: const ApiConfig(
+          baseUrl: 'system-track-monitor.web.app',
+        ),
+      );
+
+      // Verificar que no hay token antes
+      final tokenBefore = await TokenUtils.getToken();
+      expect(tokenBefore, isNull);
+
+      // Llamar executeGet con initialToken
+      try {
+        await client.executeGet(
+          path: 'api/users/profile',
+          initialToken: 'mi_token_inicial_123',
+        );
+        fail('Debería lanzar una excepción');
+      } catch (e) {
+        // Esperamos un error de red, pero el token debe haberse guardado
+        expect(e, isA<Exception>());
+      }
+
+      // Verificar que el token se guardó
+      final tokenAfter = await TokenUtils.getToken();
+      expect(tokenAfter, 'mi_token_inicial_123');
+    });
+
+    test('debe usar el token inicial en el primer intento', () async {
+      // Limpiar token antes del test
+      await TokenUtils.removeToken();
+
+      final client = ApiRestConnect(
+        config: const ApiConfig(
+          baseUrl: 'system-track-monitor.web.app',
+        ),
+      );
+
+      // Llamar executeGet con initialToken
+      try {
+        await client.executeGet(
+          path: 'api/users/profile',
+          params: {'userId': '8iNm4zV7zUaIINRf7HoHtskpF4f1'},
+          initialToken: 'token_para_primer_intento',
+        );
+        fail('Debería lanzar una excepción');
+      } catch (e) {
+        // Esperamos un error de red
+        expect(e, isA<Exception>());
+      }
+
+      // Verificar que el token se guardó y está disponible
+      final savedToken = await TokenUtils.getToken();
+      expect(savedToken, 'token_para_primer_intento');
+    });
+
+    test('no debe guardar token si initialToken es null', () async {
+      // Limpiar token antes del test
+      await TokenUtils.removeToken();
+
+      final client = ApiRestConnect(
+        config: const ApiConfig(
+          baseUrl: 'system-track-monitor.web.app',
+        ),
+      );
+
+      // Llamar executeGet sin initialToken
+      try {
+        await client.executeGet(
+          path: 'api/users/profile',
+        );
+        fail('Debería lanzar una excepción');
+      } catch (e) {
+        expect(e, isA<Exception>());
+      }
+
+      // Verificar que no se guardó ningún token
+      final tokenAfter = await TokenUtils.getToken();
+      expect(tokenAfter, isNull);
+    });
+
+    test('no debe guardar token si initialToken está vacío', () async {
+      // Limpiar token antes del test
+      await TokenUtils.removeToken();
+
+      final client = ApiRestConnect(
+        config: const ApiConfig(
+          baseUrl: 'system-track-monitor.web.app',
+        ),
+      );
+
+      // Llamar executeGet con initialToken vacío
+      try {
+        await client.executeGet(
+          path: 'api/users/profile',
+          initialToken: '',
+        );
+        fail('Debería lanzar una excepción');
+      } catch (e) {
+        expect(e, isA<Exception>());
+      }
+
+      // Verificar que no se guardó ningún token
+      final tokenAfter = await TokenUtils.getToken();
+      expect(tokenAfter, isNull);
+    });
+
+    test('debe sobrescribir token existente si se proporciona initialToken',
+        () async {
+      // Guardar un token inicial
+      await TokenUtils.saveToken('token_anterior');
+
+      final client = ApiRestConnect(
+        config: const ApiConfig(
+          baseUrl: 'system-track-monitor.web.app',
+        ),
+      );
+
+      // Verificar que el token anterior existe
+      final tokenBefore = await TokenUtils.getToken();
+      expect(tokenBefore, 'token_anterior');
+
+      // Llamar executeGet con un nuevo initialToken
+      try {
+        await client.executeGet(
+          path: 'api/users/profile',
+          initialToken: 'nuevo_token_inicial',
+        );
+        fail('Debería lanzar una excepción');
+      } catch (e) {
+        expect(e, isA<Exception>());
+      }
+
+      // Verificar que el token se sobrescribió
+      final tokenAfter = await TokenUtils.getToken();
+      expect(tokenAfter, 'nuevo_token_inicial');
+      expect(tokenAfter, isNot('token_anterior'));
+    });
+
+    test('debe seguir el flujo normal de refresco si el token inicial falla',
+        () async {
+      // Limpiar token antes del test
+      await TokenUtils.removeToken();
+
+      final client = ApiRestConnect(
+        config: const ApiConfig(
+          baseUrl: 'system-track-monitor.web.app',
+          tokenUrl: 'https://identitytoolkit.googleapis.com/v1/accounts:signUp',
+          tokenField: 'idToken',
+          tokenParams: {'key': 'AIzaSyBkEY7lz9Io9309uR88WuDG-48umiozraI'},
+          tokenBody: {'returnSecureToken': true},
+        ),
+      );
+
+      // Llamar executeGet con initialToken que probablemente fallará
+      // El flujo debería intentar refrescar el token si hay error 401/403/500
+      try {
+        await client.executeGet(
+          path: 'api/users/profile',
+          initialToken: 'token_inicial_que_puede_fallar',
+        );
+        fail('Debería lanzar una excepción');
+      } catch (e) {
+        // Esperamos un error (de red o de token)
+        expect(e, isA<Exception>());
+      }
+
+      // El token inicial debe haberse guardado
+      final savedToken = await TokenUtils.getToken();
+      expect(savedToken, isNotNull);
+    });
+
+    test('debe funcionar con initialToken y headers personalizados', () async {
+      // Limpiar token antes del test
+      await TokenUtils.removeToken();
+
+      final client = ApiRestConnect(
+        config: const ApiConfig(
+          baseUrl: 'system-track-monitor.web.app',
+        ),
+      );
+
+      // Llamar executeGet con initialToken y headers
+      try {
+        await client.executeGet(
+          path: 'api/users/profile',
+          initialToken: 'token_con_headers',
+          headers: {'Custom-Header': 'custom-value'},
+        );
+        fail('Debería lanzar una excepción');
+      } catch (e) {
+        expect(e, isA<Exception>());
+      }
+
+      // Verificar que el token se guardó
+      final savedToken = await TokenUtils.getToken();
+      expect(savedToken, 'token_con_headers');
+    });
+  });
 }

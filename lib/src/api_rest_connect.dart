@@ -3,7 +3,6 @@ import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'dart:io';
-import 'utils/token_utils.dart';
 
 /// Cliente HTTP REST mejorado que retorna directamente los datos de la respuesta
 class ApiRestConnect {
@@ -94,6 +93,9 @@ class ApiRestConnect {
   }
 
   /// Ejecuta una petición GET
+  ///
+  /// [initialToken] - Token opcional que se guardará y usará en el primer intento.
+  /// Si se proporciona y la solicitud falla, se seguirá el flujo normal para refrescar el token.
   Future<dynamic> executeGet({
     required String path,
     Map<String, dynamic>? params,
@@ -101,7 +103,14 @@ class ApiRestConnect {
     Map<String, String>? headers,
     ApiConfig? overrideConfig,
     bool retryOnTokenError = true,
+    String? initialToken,
   }) async {
+    // Si se proporciona un token inicial, guardarlo
+    if (initialToken != null && initialToken.isNotEmpty) {
+      await TokenUtils.saveToken(initialToken);
+      debugPrint('Token inicial guardado y será usado en el primer intento');
+    }
+
     return await _executeGetWithRetry(
       path: path,
       params: params,
