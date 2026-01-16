@@ -40,11 +40,14 @@ class ApiRestConnect {
     }
   }
 
-  /// Agrega el token a los headers si existe
+  /// Agrega el token a los headers si existe y no está ya presente
   Future<void> _addTokenToHeaders(Map<String, String> headers) async {
-    final token = await TokenUtils.getToken();
-    if (token != null && token.isNotEmpty) {
-      headers['Authorization'] = 'Bearer $token';
+    // Solo agregar el token si no existe ya un header Authorization
+    if (!headers.containsKey('Authorization')) {
+      final token = await TokenUtils.getToken();
+      if (token != null && token.isNotEmpty) {
+        headers['Authorization'] = 'Bearer $token';
+      }
     }
   }
 
@@ -159,14 +162,14 @@ class ApiRestConnect {
       throw Exception(apiError.toString());
     }
 
-    // Combinar headers
+    // Combinar headers: primero los por defecto, luego los personalizados (tienen prioridad)
     final finalHeaders = <String, String>{};
     finalHeaders.addAll(config.defaultHeaders);
     if (headers != null) {
       finalHeaders.addAll(headers);
     }
 
-    // Agregar token si existe
+    // Agregar token si existe y no está ya presente en los headers
     await _addTokenToHeaders(finalHeaders);
 
     // Log de la petición
