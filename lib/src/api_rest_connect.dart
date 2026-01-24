@@ -4,12 +4,17 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'dart:io';
 
+/// Callback del cliente para actualizar el token cuando hay 401/403.
+typedef UnauthorizedTokenCallback = Future<String> Function(String currentToken);
+
 /// Cliente HTTP REST mejorado que retorna directamente los datos de la respuesta
 class ApiRestConnect {
   final ApiConfig _config;
+  final UnauthorizedTokenCallback? onUnauthorizedTokenRefresh;
   String get currentBaseUrl => _config.baseUrl ?? '';
 
-  ApiRestConnect({ApiConfig? config}) : _config = config ?? const ApiConfig();
+  ApiRestConnect({ApiConfig? config, this.onUnauthorizedTokenRefresh})
+      : _config = config ?? const ApiConfig();
 
   /// Verifica la conectividad a internet
   Future<bool> _checkInternetConnection() async {
@@ -48,6 +53,27 @@ class ApiRestConnect {
         headers['Authorization'] = 'Bearer $token';
       }
     }
+  }
+
+  /// Intenta obtener un nuevo token usando el callback del cliente.
+  /// Retorna true si guardó un token válido.
+  Future<bool> _tryClientTokenRefresh() async {
+    final callback = onUnauthorizedTokenRefresh;
+    if (callback == null) return false;
+
+    try {
+      final currentToken = await TokenUtils.getToken();
+      final newToken = await callback(currentToken ?? '');
+      if (newToken.isNotEmpty) {
+        await TokenUtils.saveToken(newToken);
+        debugPrint('Token actualizado desde callback del cliente');
+        return true;
+      }
+    } catch (error) {
+      debugPrint('Error en callback de token del cliente: $error');
+    }
+
+    return false;
   }
 
   /// Maneja errores y crea ApiError correspondiente
@@ -151,6 +177,7 @@ class ApiRestConnect {
     bool isRetry = false,
   }) async {
     final config = overrideConfig ?? _config;
+    bool clientTokenRefreshSucceeded = false;
     final uri = Uri.https(
       otherAuthority ?? currentBaseUrl,
       path,
@@ -256,6 +283,26 @@ class ApiRestConnect {
         statusCode: response.statusCode,
       );
 
+      // PASO 2.5: Permitir al cliente actualizar el token antes del refresh
+      if (retryOnTokenError &&
+          !isRetry &&
+          onUnauthorizedTokenRefresh != null &&
+          (errorType == ApiErrorType.unauthorized ||
+              errorType == ApiErrorType.forbidden)) {
+        clientTokenRefreshSucceeded = await _tryClientTokenRefresh();
+        if (clientTokenRefreshSucceeded) {
+          return await _executeGetWithRetry(
+            path: path,
+            params: params,
+            otherAuthority: otherAuthority,
+            headers: headers,
+            overrideConfig: overrideConfig,
+            retryOnTokenError: false,
+            isRetry: true,
+          );
+        }
+      }
+
       // PASO 3: Si es error de acceso (401, 403) o error de servidor (500), refrescar token y reintentar
       final shouldRefreshToken = retryOnTokenError &&
           !isRetry &&
@@ -308,7 +355,8 @@ class ApiRestConnect {
       final apiError = _handleError(error, null);
 
       // Si es error de token (401) y no es un reintento, intentar refrescar token
-      if (apiError.type == ApiErrorType.unauthorized &&
+      if (!clientTokenRefreshSucceeded &&
+          apiError.type == ApiErrorType.unauthorized &&
           retryOnTokenError &&
           !isRetry &&
           (_config.tokenUrl != null && _config.tokenField != null)) {
@@ -520,6 +568,7 @@ class ApiRestConnect {
     bool isRetry = false,
   }) async {
     final config = overrideConfig ?? _config;
+    bool clientTokenRefreshSucceeded = false;
     final uri = Uri.https(
       otherAuthority ?? currentBaseUrl,
       path,
@@ -642,6 +691,27 @@ class ApiRestConnect {
         statusCode: response.statusCode,
       );
 
+      // PASO 2.5: Permitir al cliente actualizar el token antes del refresh
+      if (retryOnTokenError &&
+          !isRetry &&
+          onUnauthorizedTokenRefresh != null &&
+          (errorType == ApiErrorType.unauthorized ||
+              errorType == ApiErrorType.forbidden)) {
+        clientTokenRefreshSucceeded = await _tryClientTokenRefresh();
+        if (clientTokenRefreshSucceeded) {
+          return await _executePutWithRetry(
+            path: path,
+            body: body,
+            requestData: requestData,
+            otherAuthority: otherAuthority,
+            headers: headers,
+            overrideConfig: overrideConfig,
+            retryOnTokenError: false,
+            isRetry: true,
+          );
+        }
+      }
+
       // PASO 3: Si es error de acceso (401, 403) o error de servidor (500), refrescar token y reintentar
       final shouldRefreshToken = retryOnTokenError &&
           !isRetry &&
@@ -695,7 +765,8 @@ class ApiRestConnect {
       final apiError = _handleError(error, null);
 
       // Si es error de token (401) y no es un reintento, intentar refrescar token
-      if (apiError.type == ApiErrorType.unauthorized &&
+      if (!clientTokenRefreshSucceeded &&
+          apiError.type == ApiErrorType.unauthorized &&
           retryOnTokenError &&
           !isRetry &&
           (_config.tokenUrl != null && _config.tokenField != null)) {
@@ -950,13 +1021,19 @@ class ApiRestConnect {
 
   /// Método para crear una instancia con configuración personalizada
   ApiRestConnect withConfig(ApiConfig config) {
-    return ApiRestConnect(config: config);
+    return ApiRestConnect(
+      config: config,
+      onUnauthorizedTokenRefresh: onUnauthorizedTokenRefresh,
+    );
   }
 
   /// Método para crear una instancia con URL base personalizada
   ApiRestConnect withBaseUrl(String baseUrl) {
     final newConfig = _config.copyWith(baseUrl: baseUrl);
-    return ApiRestConnect(config: newConfig);
+    return ApiRestConnect(
+      config: newConfig,
+      onUnauthorizedTokenRefresh: onUnauthorizedTokenRefresh,
+    );
   }
 
   /// Método para crear una instancia con headers personalizados
@@ -966,7 +1043,10 @@ class ApiRestConnect {
     newDefaultHeaders.addAll(headers);
 
     final newConfig = _config.copyWith(defaultHeaders: newDefaultHeaders);
-    return ApiRestConnect(config: newConfig);
+    return ApiRestConnect(
+      config: newConfig,
+      onUnauthorizedTokenRefresh: onUnauthorizedTokenRefresh,
+    );
   }
 
   /// Método para crear una instancia con configuración de token
@@ -978,6 +1058,9 @@ class ApiRestConnect {
       tokenUrl: tokenUrl,
       tokenField: tokenField,
     );
-    return ApiRestConnect(config: newConfig);
+    return ApiRestConnect(
+      config: newConfig,
+      onUnauthorizedTokenRefresh: onUnauthorizedTokenRefresh,
+    );
   }
 }
