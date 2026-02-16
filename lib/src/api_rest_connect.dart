@@ -2,7 +2,7 @@ import 'package:api_rest_connect/api_rest_connect_export.dart';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
-import 'dart:io';
+import 'utils/platform_connectivity.dart';
 
 /// Callback del cliente para actualizar el token cuando hay 401/403.
 typedef UnauthorizedTokenCallback = Future<String> Function(String currentToken);
@@ -17,13 +17,11 @@ class ApiRestConnect {
       : _config = config ?? const ApiConfig();
 
   /// Verifica la conectividad a internet
+  ///
+  /// En app (mobile/desktop): usa dart:io con InternetAddress.lookup
+  /// En web: asume conectividad disponible (el navegador maneja la conexión)
   Future<bool> _checkInternetConnection() async {
-    try {
-      final result = await InternetAddress.lookup('google.com');
-      return result.isNotEmpty && result[0].rawAddress.isNotEmpty;
-    } on SocketException catch (_) {
-      return false;
-    }
+    return await checkInternetConnection();
   }
 
   /// Procesa el body de la respuesta JSON y retorna directamente los datos
@@ -89,7 +87,7 @@ class ApiRestConnect {
         // message: 'Error de conexión de red',
         originalError: error,
       );
-    } else if (error is SocketException) {
+    } else if (isSocketException(error)) {
       return ApiError(
         type: ApiErrorType.noInternet,
         // message: 'Sin conexión a internet',
