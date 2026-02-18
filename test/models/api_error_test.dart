@@ -25,10 +25,53 @@ void main() {
     });
 
     group('validateStatusCode', () {
-      test('debe retornar unknown para códigos 2xx', () {
-        expect(ApiError.validateStatusCode(200), ApiErrorType.unknown);
-        expect(ApiError.validateStatusCode(201), ApiErrorType.unknown);
-        expect(ApiError.validateStatusCode(204), ApiErrorType.unknown);
+      test('debe retornar success para códigos 2xx sin método', () {
+        expect(ApiError.validateStatusCode(200), ApiErrorType.success);
+        expect(ApiError.validateStatusCode(201), ApiErrorType.success);
+        expect(ApiError.validateStatusCode(204), ApiErrorType.success);
+      });
+
+      test('debe retornar success para GET con 200', () {
+        expect(
+          ApiError.validateStatusCode(200, method: 'GET'),
+          ApiErrorType.success,
+        );
+      });
+
+      test('debe retornar success para POST con 200 y 201', () {
+        expect(
+          ApiError.validateStatusCode(200, method: 'POST'),
+          ApiErrorType.success,
+        );
+        expect(
+          ApiError.validateStatusCode(201, method: 'POST'),
+          ApiErrorType.success,
+        );
+      });
+
+      test('debe retornar success para PUT con 200', () {
+        expect(
+          ApiError.validateStatusCode(200, method: 'PUT'),
+          ApiErrorType.success,
+        );
+      });
+
+      test('debe retornar success para DELETE con 200 y 204', () {
+        expect(
+          ApiError.validateStatusCode(200, method: 'DELETE'),
+          ApiErrorType.success,
+        );
+        expect(
+          ApiError.validateStatusCode(204, method: 'DELETE'),
+          ApiErrorType.success,
+        );
+      });
+
+      test('POST con 204 no debe ser success', () {
+        expect(
+          ApiError.validateStatusCode(204, method: 'POST'),
+          isNot(ApiErrorType.success),
+        );
       });
 
       test('debe retornar badRequest para 400', () {

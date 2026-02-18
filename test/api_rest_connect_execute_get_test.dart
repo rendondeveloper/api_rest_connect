@@ -173,7 +173,7 @@ void main() {
       // Verificamos que validateStatusCode funciona correctamente
       expect(
         ApiError.validateStatusCode(200),
-        ApiErrorType.unknown, // 200-299 no son errores
+        ApiErrorType.success, // 200-299 son éxito
       );
       expect(
         ApiError.validateStatusCode(500),

@@ -1,5 +1,6 @@
-/// Tipos de errores de API
+/// Tipos de resultado de API
 enum ApiErrorType {
+  success,
   noInternet,
   timeout,
   serverError,
@@ -58,10 +59,19 @@ class ApiError implements Exception {
   //   }
   // }
 
-  /// Valida el código de estado HTTP y retorna el tipo de error correspondiente
-  static ApiErrorType validateStatusCode(int statusCode) {
-    if (statusCode >= 200 && statusCode < 300) {
-      return ApiErrorType.unknown; // No es un error
+  /// Valida el código de estado HTTP y retorna el tipo correspondiente
+  ///
+  /// [statusCode] - Código HTTP de la respuesta
+  /// [method] - Método HTTP opcional (GET, POST, PUT, DELETE) para validar
+  /// el código de éxito esperado según la operación:
+  ///   - GET:    200
+  ///   - POST:   200, 201 (Created)
+  ///   - PUT:    200
+  ///   - DELETE: 200, 204 (No Content)
+  ///   - null:   cualquier 2xx es éxito (comportamiento por defecto)
+  static ApiErrorType validateStatusCode(int statusCode, {String? method}) {
+    if (_isSuccessForMethod(statusCode, method)) {
+      return ApiErrorType.success;
     }
 
     switch (statusCode) {
@@ -87,6 +97,24 @@ class ApiError implements Exception {
           return ApiErrorType.serverError;
         }
         return ApiErrorType.unknown;
+    }
+  }
+
+  /// Determina si un status code es éxito según el método HTTP
+  static bool _isSuccessForMethod(int statusCode, String? method) {
+    if (method == null) {
+      return statusCode >= 200 && statusCode < 300;
+    }
+
+    switch (method.toUpperCase()) {
+      case 'POST':
+        return statusCode == 200 || statusCode == 201;
+      case 'DELETE':
+        return statusCode == 200 || statusCode == 204;
+      case 'GET':
+      case 'PUT':
+      default:
+        return statusCode >= 200 && statusCode < 300;
     }
   }
 }

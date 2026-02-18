@@ -268,10 +268,10 @@ class ApiRestConnect {
       );
 
       // PASO 2: Validar status code SIN caer en catch
-      final errorType = ApiError.validateStatusCode(response.statusCode);
+      final errorType = ApiError.validateStatusCode(response.statusCode, method: 'GET');
 
-      // Si la respuesta es exitosa (200-299), procesar y retornar
-      if (errorType == ApiErrorType.unknown) {
+      // Si la respuesta es exitosa, procesar y retornar
+      if (errorType == ApiErrorType.success) {
         return _processResponseBody(response.body);
       }
 
@@ -487,12 +487,11 @@ class ApiRestConnect {
         headers: response.headers,
       );
 
-      // Validar status code
-      final errorType = ApiError.validateStatusCode(response.statusCode);
-      if (errorType != ApiErrorType.unknown) {
+      // Validar status code según método POST (acepta 200 y 201)
+      final errorType = ApiError.validateStatusCode(response.statusCode, method: 'POST');
+      if (errorType != ApiErrorType.success) {
         final apiError = ApiError(
           type: errorType,
-          // message: ApiError.getErrorMessageByType(errorType),
           statusCode: response.statusCode,
         );
 
@@ -676,10 +675,10 @@ class ApiRestConnect {
       );
 
       // PASO 2: Validar status code SIN caer en catch
-      final errorType = ApiError.validateStatusCode(response.statusCode);
+      final errorType = ApiError.validateStatusCode(response.statusCode, method: 'PUT');
 
-      // Si la respuesta es exitosa (200-299), procesar y retornar
-      if (errorType == ApiErrorType.unknown) {
+      // Si la respuesta es exitosa, procesar y retornar
+      if (errorType == ApiErrorType.success) {
         return _processResponseBody(response.body);
       }
 
@@ -891,12 +890,11 @@ class ApiRestConnect {
         headers: response.headers,
       );
 
-      // Validar status code
-      final errorType = ApiError.validateStatusCode(response.statusCode);
-      if (errorType != ApiErrorType.unknown) {
+      // Validar status code según método DELETE (acepta 200 y 204)
+      final errorType = ApiError.validateStatusCode(response.statusCode, method: 'DELETE');
+      if (errorType != ApiErrorType.success) {
         final apiError = ApiError(
           type: errorType,
-          // message: ApiError.getErrorMessageByType(errorType),
           statusCode: response.statusCode,
         );
 
