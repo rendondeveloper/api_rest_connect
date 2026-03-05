@@ -852,18 +852,9 @@ class ApiRestConnect {
     // Agregar token si existe
     await _addTokenToHeaders(finalHeaders);
 
-    // Log de la petición
-    ApiInterceptor.logRequest(
-      method: 'DELETE',
-      uri: uri,
-      headers: finalHeaders,
-      body: body,
-    );
-
     try {
-      // Crear request usando http.Request
+      // Crear request usando http.Request (mismo orden que executePost: body luego headers)
       final request = http.Request('DELETE', uri);
-      request.headers.addAll(finalHeaders);
 
       // Agregar body al request (mismo criterio que executePost: Map -> json.encode, String -> tal cual)
       if (body != null) {
@@ -873,6 +864,16 @@ class ApiRestConnect {
           request.body = body;
         }
       }
+
+      request.headers.addAll(finalHeaders);
+
+      // Log de la petición (usar request.body/headers como en executePost para evitar inspección de bodyFields)
+      ApiInterceptor.logRequest(
+        method: 'DELETE',
+        uri: uri,
+        headers: request.headers,
+        body: request.body.isEmpty ? null : request.body,
+      );
 
       // Enviar request con timeout
       final streamedResponse = await request.send().timeout(config.timeout);
