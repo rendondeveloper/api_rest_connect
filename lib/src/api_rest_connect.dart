@@ -865,12 +865,12 @@ class ApiRestConnect {
       final request = http.Request('DELETE', uri);
       request.headers.addAll(finalHeaders);
 
-      // Agregar body al request si existe
+      // Agregar body al request (mismo criterio que executePost: Map -> json.encode, String -> tal cual)
       if (body != null) {
-        if (body is String) {
-          request.body = body;
-        } else {
+        if (body is Map<String, dynamic>) {
           request.body = json.encode(body);
+        } else if (body is String) {
+          request.body = body;
         }
       }
 
