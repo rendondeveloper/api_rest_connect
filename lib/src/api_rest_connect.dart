@@ -877,8 +877,10 @@ class ApiRestConnect {
       // Enviar request con timeout
       final streamedResponse = await request.send().timeout(config.timeout);
 
-      // Convertir StreamedResponse a Response
-      final response = await http.Response.fromStream(streamedResponse);
+      // Para 204 No Content no leer el stream (evita excepciones con body vacío en algunos entornos)
+      final response = streamedResponse.statusCode == 204
+          ? http.Response('', streamedResponse.statusCode)
+          : await http.Response.fromStream(streamedResponse);
 
       final duration = DateTime.now().difference(startTime);
 
