@@ -529,6 +529,7 @@ class ApiRestConnect {
     required String path,
     Object? body,
     dynamic requestData,
+    Map<String, dynamic>? params,
     String? otherAuthority,
     Map<String, String>? headers,
     ApiConfig? overrideConfig,
@@ -545,6 +546,7 @@ class ApiRestConnect {
       path: path,
       body: body,
       requestData: requestData,
+      params: params,
       otherAuthority: otherAuthority,
       headers: headers,
       overrideConfig: overrideConfig,
@@ -558,6 +560,7 @@ class ApiRestConnect {
     required String path,
     Object? body,
     dynamic requestData,
+    Map<String, dynamic>? params,
     String? otherAuthority,
     Map<String, String>? headers,
     ApiConfig? overrideConfig,
@@ -569,6 +572,7 @@ class ApiRestConnect {
     final uri = Uri.https(
       otherAuthority ?? currentBaseUrl,
       path,
+      _convertParamsToString(params),
     );
 
     final startTime = DateTime.now();
@@ -700,6 +704,7 @@ class ApiRestConnect {
             path: path,
             body: body,
             requestData: requestData,
+            params: params,
             otherAuthority: otherAuthority,
             headers: headers,
             overrideConfig: overrideConfig,
@@ -729,6 +734,7 @@ class ApiRestConnect {
             path: path,
             body: body,
             requestData: requestData,
+            params: params,
             otherAuthority: otherAuthority,
             headers: headers,
             overrideConfig: overrideConfig,
@@ -777,6 +783,7 @@ class ApiRestConnect {
             path: path,
             body: body,
             requestData: requestData,
+            params: params,
             otherAuthority: otherAuthority,
             headers: headers,
             overrideConfig: overrideConfig,
